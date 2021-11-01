@@ -1440,6 +1440,7 @@ long long redisPopcount(void *s, long count);
 void redisSetProcTitle(char *title);
 
 /* networking.c -- Networking and Client related operations */
+// networking.c -- 网络和客户端相关的操作
 client *createClient(int fd);
 void closeTimedoutClients(void);
 void freeClient(client *c);
