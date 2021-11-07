@@ -1108,6 +1108,7 @@ void updateCachedTime(int update_daylight_info) {
  * a macro is used: run_with_period(milliseconds) { .... }
  */
 
+// 时间事件触发后的回调函数
 int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     int j;
     UNUSED(eventLoop);
@@ -1192,6 +1193,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
 
     /* We received a SIGTERM, shutting down here in a safe way, as it is
      * not ok doing so inside the signal handler. */
+    // 收到了SIGTERM信号，在这里对server进行安全关闭操作，因为在信号处理逻辑内部这样做是不可以的。
     if (server.shutdown_asap) {
         if (prepareForShutdown(SHUTDOWN_NOFLAGS) == C_OK) exit(0);
         serverLog(LL_WARNING,"SIGTERM received but errors trying to shut down the server, check the logs for more information");
@@ -1199,6 +1201,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     }
 
     /* Show some info about non-empty databases */
+    //显示展非空数据库的一些信息
     run_with_period(5000) {
         for (j = 0; j < server.dbnum; j++) {
             long long size, used, vkeys;
@@ -1214,6 +1217,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     }
 
     /* Show information about connected clients */
+    // 显示已连接客户端的信息
     if (!server.sentinel_mode) {
         run_with_period(5000) {
             serverLog(LL_VERBOSE,
@@ -1225,9 +1229,11 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     }
 
     /* We need to do a few operations on clients asynchronously. */
+    // 对客户端异步地做一些操作。
     clientsCron();
 
     /* Handle background operations on Redis databases. */
+    // 执行数据库的后台操作。
     databasesCron();
 
     /* Start a scheduled AOF rewrite if this was requested by the user while
@@ -1324,6 +1330,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
      * clear the AOF error in case of success to make the DB writable again,
      * however to try every second is enough in case of 'hz' is set to
      * an higher frequency. */
+    // 每1秒执行1次，检查AOF是否有写错误
     run_with_period(1000) {
         if (server.aof_last_write_status == C_ERR)
             flushAppendOnlyFile(0);
@@ -2163,7 +2170,7 @@ void initServer(void) {
 
     /* Create an event handler for accepting new connections in TCP and Unix
      * domain sockets. */
-    // 为每一个监听的IP设置连接事件的处理函数acceptTcpHandler
+    // 为每一个监听的IP设置连接事件的处理函数acceptTcpHandler(即为每一个监听的端口注册AE_READABLE事件的handler)
     for (j = 0; j < server.ipfd_count; j++) {
         if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,
             acceptTcpHandler,NULL) == AE_ERR)
@@ -3910,16 +3917,23 @@ void createPidFile(void) {
     }
 }
 
+// 以守护进程的方式运行
 void daemonize(void) {
     int fd;
 
-    if (fork() != 0) exit(0); /* parent exits */
+    if (fork() != 0) exit(0); /* parent exits */ // 父进程退出
+    // 创建新的session
     setsid(); /* create a new session */
+
+    // fork的返回值是0，以下逻辑在子进程中执行。
 
     /* Every output goes to /dev/null. If Redis is daemonized but
      * the 'logfile' is set to 'stdout' in the configuration file
      * it will not log at all. */
+    // 所有的输出都丢到/dev/null中。如果Redis是以守护进程的方式运行但是
+    // 配置文件中的'logfile'设置的是'stdout'，那么将不会输出任何日志。
     if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
+        // 将子进程的标准输入、标准输出、标准错误输出重定向到/dev/null中
         dup2(fd, STDIN_FILENO);
         dup2(fd, STDOUT_FILENO);
         dup2(fd, STDERR_FILENO);
@@ -4074,9 +4088,10 @@ int checkForSentinelMode(int argc, char **argv) {
 }
 
 /* Function called at startup to load RDB or AOF file in memory. */
+// 启动时调用的函数，用于将 RDB 或 AOF 文件加载到内存中。
 void loadDataFromDisk(void) {
     long long start = ustime();
-    if (server.aof_state == AOF_ON) {
+    if (server.aof_state == AOF_ON) { // TODO 为什么是先读AOF再读RBD？
         if (loadAppendOnlyFile(server.aof_filename) == C_OK)
             serverLog(LL_NOTICE,"DB loaded from append only file: %.3f seconds",(float)(ustime()-start)/1000000);
     } else {
@@ -4380,9 +4395,10 @@ int main(int argc, char **argv) {
         serverLog(LL_WARNING, "Configuration loaded");
     }
 
+    // 判断是否以守护进程的方式启动
     server.supervised = redisIsSupervised(server.supervised_mode);
     int background = server.daemonize && !server.supervised;
-    if (background) daemonize();
+    if (background) daemonize(); // 以守护进程的方式运行
 
     initServer();
     if (background || server.pidfile) createPidFile();
@@ -4392,6 +4408,7 @@ int main(int argc, char **argv) {
 
     if (!server.sentinel_mode) {
         /* Things not needed when running in Sentinel mode. */
+        // 如果运行的是Sentinel模式则不需要做这些事。
         serverLog(LL_WARNING,"Server initialized");
     #ifdef __linux__
         linuxMemoryWarnings();

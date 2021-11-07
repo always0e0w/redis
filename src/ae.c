@@ -60,6 +60,7 @@
     #endif
 #endif
 
+// 创建 aeEventLoop 实例
 aeEventLoop *aeCreateEventLoop(int setsize) {
     aeEventLoop *eventLoop;
     int i;
@@ -267,11 +268,12 @@ static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
 }
 
 /* Process time events */
+// 处理时间事件
 static int processTimeEvents(aeEventLoop *eventLoop) {
     int processed = 0;
     aeTimeEvent *te;
     long long maxId;
-    time_t now = time(NULL);
+    time_t now = time(NULL); // 获取当前时间
 
     /* If the system clock is moved to the future, and then set back to the
      * right value, time events may be delayed in a random way. Often this
@@ -290,13 +292,14 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
     }
     eventLoop->lastTime = now;
 
-    te = eventLoop->timeEventHead;
+    te = eventLoop->timeEventHead; // 获取时间事件链表的头节点
     maxId = eventLoop->timeEventNextId-1;
     while(te) {
         long now_sec, now_ms;
         long long id;
 
         /* Remove events scheduled for deletion. */
+        // 移除被标记为删除的事件
         if (te->id == AE_DELETED_EVENT_ID) {
             aeTimeEvent *next = te->next;
             if (te->prev)
@@ -321,13 +324,15 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
             te = te->next;
             continue;
         }
-        aeGetTime(&now_sec, &now_ms);
+        aeGetTime(&now_sec, &now_ms); // 获取当前时间
+        // 判断是否满足触发条件
         if (now_sec > te->when_sec ||
             (now_sec == te->when_sec && now_ms >= te->when_ms))
         {
             int retval;
 
             id = te->id;
+            // 调用注册的回调函数处理对应的事件
             retval = te->timeProc(eventLoop, id, te->clientData);
             processed++;
             if (retval != AE_NOMORE) {
@@ -341,6 +346,8 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
     return processed;
 }
 
+/* 主要负责捕获事件、判断事件类型和调用具体的事件处理函数，从而实现事件的处理。
+ * 该函数返回已经处理的事件的数量。 */
 /* Process every pending time event, then every pending file event
  * (that may be registered by time event callbacks just processed).
  * Without special flags the function sleeps until some file event
@@ -360,12 +367,15 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
     int processed = 0, numevents;
 
     /* Nothing to do? return ASAP */
+    // 无事可做？赶紧返回。(ASAP: as soon as possible)
     if (!(flags & AE_TIME_EVENTS) && !(flags & AE_FILE_EVENTS)) return 0;
 
     /* Note that we want call select() even if there are no
      * file events to process as long as we want to process time
      * events, in order to sleep until the next time event is ready
      * to fire. */
+    /*
+     * */
     if (eventLoop->maxfd != -1 ||
         ((flags & AE_TIME_EVENTS) && !(flags & AE_DONT_WAIT))) {
         int j;
@@ -408,6 +418,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 
         /* Call the multiplexing API, will return only on timeout or when
          * some event fires. */
+        // 调用多路复用API来捕获事件，仅当超时或者有事件触发时返回。
         numevents = aeApiPoll(eventLoop, tvp);
 
         /* After sleep callback. */
@@ -439,12 +450,14 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
              *
              * Fire the readable event if the call sequence is not
              * inverted. */
+            // 如果触发的是可读事件，调用事件注册时设置的读事件回调函数处理。
             if (!invert && fe->mask & mask & AE_READABLE) {
                 fe->rfileProc(eventLoop,fd,fe->clientData,mask);
                 fired++;
             }
 
             /* Fire the writable event. */
+            // 触发的是可写事件
             if (fe->mask & mask & AE_WRITABLE) {
                 if (!fired || fe->wfileProc != fe->rfileProc) {
                     fe->wfileProc(eventLoop,fd,fe->clientData,mask);
@@ -465,9 +478,11 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
         }
     }
     /* Check time events */
+    // 检查是否有时间事件触发
     if (flags & AE_TIME_EVENTS)
-        processed += processTimeEvents(eventLoop);
+        processed += processTimeEvents(eventLoop); // 处理触发的时间事件
 
+    // 返回已经处理的文件或时间事件的数量
     return processed; /* return the number of processed file/time events */
 }
 
@@ -493,6 +508,7 @@ int aeWait(int fd, int mask, long long milliseconds) {
     }
 }
 
+// 事件驱动框架主循环的入口
 void aeMain(aeEventLoop *eventLoop) {
     eventLoop->stop = 0;
     while (!eventLoop->stop) {
