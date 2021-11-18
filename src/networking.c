@@ -213,6 +213,7 @@ void clientInstallWriteHandler(client *c) {
          * loop, we can try to directly write to the client sockets avoiding
          * a system call. We'll only really install the write handler if
          * we'll not be able to write the whole reply at once. */
+        // 将客户端的标识设置为待写回，即CLIENT_PENDING_WRITE
         c->flags |= CLIENT_PENDING_WRITE;
         listAddNodeHead(server.clients_pending_write,c);
     }
@@ -240,6 +241,7 @@ void clientInstallWriteHandler(client *c) {
  * Typically gets called every time a reply is built, before adding more
  * data to the clients output buffers. If the function returns C_ERR no
  * data should be appended to the output buffers. */
+// 
 int prepareClientToWrite(client *c) {
     /* If it's the Lua client we always return ok without installing any
      * handler since there is no socket at all. */
@@ -340,6 +342,7 @@ void _addReplyProtoToList(client *c, const char *s, size_t len) {
  * -------------------------------------------------------------------------- */
 
 /* Add the object 'obj' string representation to the client output buffer. */
+// 将'obj'的字符串表示(即序列化后)添加到客户端的输出缓冲区.
 void addReply(client *c, robj *obj) {
     if (prepareClientToWrite(c) != C_OK) return;
 
@@ -3220,6 +3223,7 @@ int stopThreadedIOIfNeeded(void) {
     }
 }
 
+// 主要负责将 clients_pending_write 列表中的客户端分配给IO线程进行处理.
 int handleClientsWithPendingWritesUsingThreads(void) {
     int processed = listLength(server.clients_pending_write);
     if (processed == 0) return 0; /* Return ASAP if there are no clients. */
@@ -3329,7 +3333,9 @@ int postponeClientRead(client *c) {
  * the reads in the buffers, and also parse the first command available
  * rendering it in the client structures. */
 int handleClientsWithPendingReadsUsingThreads(void) {
+    // IO线程需要启用且有用于处理对应操作的线程
     if (!server.io_threads_active || !server.io_threads_do_reads) return 0;
+    // 获取等待处理的客户端数量
     int processed = listLength(server.clients_pending_read);
     if (processed == 0) return 0;
 
@@ -3351,19 +3357,23 @@ int handleClientsWithPendingReadsUsingThreads(void) {
      * start condition atomic var. */
     io_threads_op = IO_THREADS_OP_READ;
     for (int j = 1; j < server.io_threads_num; j++) {
+        // 获取对应IO线程待处理的数量
         int count = listLength(io_threads_list[j]);
         io_threads_pending[j] = count;
     }
 
     /* Also use the main thread to process a slice of clients. */
+    // 索引0的线程是主线程
     listRewind(io_threads_list[0],&li);
     while((ln = listNext(&li))) {
         client *c = listNodeValue(ln);
         readQueryFromClient(c->conn);
     }
+    // 清空主线程待处理的客户端列表
     listEmpty(io_threads_list[0]);
 
     /* Wait for all the other threads to end their work. */
+    // 等待所有其他线程完成对应的工作
     while(1) {
         unsigned long pending = 0;
         for (int j = 1; j < server.io_threads_num; j++)

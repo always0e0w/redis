@@ -90,7 +90,8 @@ void listRotateHeadToTail(list *list);
 void listJoin(list *l, list *o);
 
 /* Directions for iterators */
-#define AL_START_HEAD 0
-#define AL_START_TAIL 1
+// 遍历链表的方向
+#define AL_START_HEAD 0 // 从前往后
+#define AL_START_TAIL 1 // 从后往前
 
 #endif /* __ADLIST_H__ */
