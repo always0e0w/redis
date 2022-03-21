@@ -62,10 +62,10 @@
 #include "server.h"
 #include "bio.h"
 
-static pthread_t bio_threads[BIO_NUM_OPS];
-static pthread_mutex_t bio_mutex[BIO_NUM_OPS];
-static pthread_cond_t bio_newjob_cond[BIO_NUM_OPS];
-static pthread_cond_t bio_step_cond[BIO_NUM_OPS];
+static pthread_t bio_threads[BIO_NUM_OPS]; // 保存后台线程的描述符
+static pthread_mutex_t bio_mutex[BIO_NUM_OPS]; // 保存互斥锁
+static pthread_cond_t bio_newjob_cond[BIO_NUM_OPS]; // 保存条件变量
+static pthread_cond_t bio_step_cond[BIO_NUM_OPS]; // 保存条件变量
 static list *bio_jobs[BIO_NUM_OPS];
 /* The following array is used to hold the number of pending jobs for every
  * OP type. This allows us to export the bioPendingJobsOfType() API that is
@@ -94,6 +94,7 @@ void lazyfreeFreeSlotsMapFromBioThread(zskiplist *sl);
 #define REDIS_THREAD_STACK_SIZE (1024*1024*4)
 
 /* Initialize the background system, spawning the thread. */
+// 初始化后台系统，创建线程。
 void bioInit(void) {
     pthread_attr_t attr;
     pthread_t thread;
@@ -129,6 +130,7 @@ void bioInit(void) {
     }
 }
 
+// 创建后台任务
 void bioCreateBackgroundJob(int type, void *arg1, void *arg2, void *arg3) {
     struct bio_job *job = zmalloc(sizeof(*job));
 
@@ -143,6 +145,7 @@ void bioCreateBackgroundJob(int type, void *arg1, void *arg2, void *arg3) {
     pthread_mutex_unlock(&bio_mutex[type]);
 }
 
+// 负责处理后台任务
 void *bioProcessBackgroundJobs(void *arg) {
     struct bio_job *job;
     unsigned long type = (unsigned long) arg;
