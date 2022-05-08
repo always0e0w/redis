@@ -1959,6 +1959,7 @@ char *redisGitDirty(void);
 uint64_t redisBuildId(void);
 
 /* Commands prototypes */
+// 命令原型
 void authCommand(client *c);
 void pingCommand(client *c);
 void echoCommand(client *c);
