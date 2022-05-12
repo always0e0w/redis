@@ -809,25 +809,25 @@ struct sharedObjectsStruct {
 };
 
 /* ZSETs use a specialized version of Skiplists */
-typedef struct zskiplistNode {
+typedef struct zskiplistNode { // 跳表的节点
     sds ele;
     double score;
-    struct zskiplistNode *backward;
+    struct zskiplistNode *backward; // 指向当前节点最底层的前一个节点(头节点和第一个节点的backward指向NULL)，从后向前遍历时使用
     struct zskiplistLevel {
-        struct zskiplistNode *forward;
-        unsigned long span;
+        struct zskiplistNode *forward; // 指向本层的下一个节点，尾节点指向NULL
+        unsigned long span; // 表示本层两个节点之间的跨度(即跳过的元素个数)
     } level[];
 } zskiplistNode;
 
-typedef struct zskiplist {
+typedef struct zskiplist { // 用于管理跳表
     struct zskiplistNode *header, *tail;
-    unsigned long length;
-    int level;
+    unsigned long length; // 跳表的长度(不包括头节点)
+    int level; // 跳表的高度
 } zskiplist;
 
 typedef struct zset {
-    dict *dict;
-    zskiplist *zsl;
+    dict *dict; // 存储对象到分数的映射
+    zskiplist *zsl; // 存储分数到对象的映射
 } zset;
 
 typedef struct clientBufferLimitsConfig {
@@ -1964,7 +1964,7 @@ void authCommand(client *c);
 void pingCommand(client *c);
 void echoCommand(client *c);
 void commandCommand(client *c);
-void setCommand(client *c);
+void setCommand(client *c); // set 命令的处理函数
 void setnxCommand(client *c);
 void setexCommand(client *c);
 void psetexCommand(client *c);

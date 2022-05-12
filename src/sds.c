@@ -41,6 +41,7 @@
 
 const char *SDS_NOINIT = "SDS_NOINIT";
 
+// 获取sds头部的大小
 static inline int sdsHdrSize(char type) {
     switch(type&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -57,6 +58,7 @@ static inline int sdsHdrSize(char type) {
     return 0;
 }
 
+// 根据大小确定需要使用的sds类型
 static inline char sdsReqType(size_t string_size) {
     if (string_size < 1<<5)
         return SDS_TYPE_5;
@@ -210,18 +212,18 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
     int hdrlen;
 
     /* Return ASAP if there is enough space left. */
-    if (avail >= addlen) return s;
+    if (avail >= addlen) return s; // 剩余空间足够，无需扩容，直接返回
 
     len = sdslen(s);
     sh = (char*)s-sdsHdrSize(oldtype);
     reqlen = newlen = (len+addlen);
     assert(newlen > len);   /* Catch size_t overflow */
     if (newlen < SDS_MAX_PREALLOC)
-        newlen *= 2;
+        newlen *= 2; // 扩容为新大小的两倍
     else
-        newlen += SDS_MAX_PREALLOC;
+        newlen += SDS_MAX_PREALLOC; // 超过阈值时每次只多扩容 SDS_MAX_PREALLOC 指定大小
 
-    type = sdsReqType(newlen);
+    type = sdsReqType(newlen); // 确定扩容后合适的类型
 
     /* Don't use type 5: the user is appending to the string and type 5 is
      * not able to remember empty space, so sdsMakeRoomFor() must be called
@@ -230,20 +232,20 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
 
     hdrlen = sdsHdrSize(type);
     assert(hdrlen + newlen + 1 > reqlen);  /* Catch size_t overflow */
-    if (oldtype==type) {
+    if (oldtype==type) { // 类型没变
         newsh = s_realloc(sh, hdrlen+newlen+1);
         if (newsh == NULL) return NULL;
         s = (char*)newsh+hdrlen;
-    } else {
+    } else { // 类型变了
         /* Since the header size changes, need to move the string forward,
          * and can't use realloc */
         newsh = s_malloc(hdrlen+newlen+1);
         if (newsh == NULL) return NULL;
         memcpy((char*)newsh+hdrlen, s, len+1);
-        s_free(sh);
-        s = (char*)newsh+hdrlen;
-        s[-1] = type;
-        sdssetlen(s, len);
+        s_free(sh); // 释放旧空间
+        s = (char*)newsh+hdrlen; // 将指针指向新空间的buf起始地址
+        s[-1] = type; // 设置sds的类型
+        sdssetlen(s, len); // 为len属性赋值
     }
     sdssetalloc(s, newlen);
     return s;

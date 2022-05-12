@@ -56,6 +56,10 @@
  * pointers being only at "level 1". This allows to traverse the list
  * from tail to head, useful for ZREVRANGE. */
 
+/* ZSet 使用哈希表来保存Redis对象到分数的映射，
+ * 使用跳表保存分数到Redis对象的映射。
+ */
+
 #include "server.h"
 #include <math.h>
 
@@ -119,6 +123,7 @@ void zslFree(zskiplist *zsl) {
  * The return value of this function is between 1 and ZSKIPLIST_MAXLEVEL
  * (both inclusive), with a powerlaw-alike distribution where higher
  * levels are less likely to be returned. */
+// 生成一个[1,64]之间的随机值，值越大，概率越低。
 int zslRandomLevel(void) {
     int level = 1;
     while ((random()&0xFFFF) < (ZSKIPLIST_P * 0xFFFF))

@@ -33,7 +33,7 @@
 #ifndef __SDS_H
 #define __SDS_H
 
-#define SDS_MAX_PREALLOC (1024*1024)
+#define SDS_MAX_PREALLOC (1024*1024) // 1MB
 extern const char *SDS_NOINIT;
 
 #include <sys/types.h>
@@ -50,6 +50,7 @@ struct __attribute__ ((__packed__)) sdshdr5 {
 };
 struct __attribute__ ((__packed__)) sdshdr8 {
     uint8_t len; /* used */
+    // alloc: 为buf申请的空间大小，不包括头部和终止符
     uint8_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
     char buf[];
@@ -101,6 +102,7 @@ static inline size_t sdslen(const sds s) {
     return 0;
 }
 
+// 返回指定的sds的剩余可用空间大小
 static inline size_t sdsavail(const sds s) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
